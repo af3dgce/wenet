@@ -245,7 +245,7 @@ class RopePositionalEncoding(PositionalEncoding):
         self.pe = self.pe.unsqueeze(0)
         pos_emb = self.position_encoding(offset, x.size(1), False)
         pos_emb = pos_emb.unsqueeze(1).unsqueeze(
-            3)  # [1, seq_len, 1, 1 head_dim]
+            4)  # [1, 1, seq, head_dim//2,1]
         # NOTE(Mddct): some model don't scale
         # TODO(Mddct): fix
         x = x * self.xscale

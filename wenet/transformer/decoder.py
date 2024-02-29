@@ -124,7 +124,7 @@ class TransformerDecoder(torch.nn.Module):
                     n_kv_head=n_kv_head,
                     head_dim=head_dim,
                 ),
-                WENET_ATTENTION_CLASSES[selfattention_layer_type](
+                WENET_ATTENTION_CLASSES['selfattn'](
                     attention_heads,
                     attention_dim,
                     src_attention_dropout_rate,
