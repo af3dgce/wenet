@@ -82,17 +82,21 @@ class TransformerDecoder(torch.nn.Module):
         eps: float = 1e-5,
         n_kv_head: Optional[int] = None,
         head_dim: Optional[int] = None,
+        selfattention_layer_type: str = "selfattn",
     ):
+        assert selfattention_layer_type in ['selfattn', 'rope_selfattn']
         super().__init__()
         attention_dim = encoder_output_size
         activation = WENET_ACTIVATION_CLASSES[activation_type]()
 
+        pos_emb_class = WENET_EMB_CLASSES[input_layer]
         self.embed = torch.nn.Sequential(
             torch.nn.Identity() if input_layer == "no_pos" else
             torch.nn.Embedding(vocab_size, attention_dim),
-            WENET_EMB_CLASSES[input_layer](attention_dim,
-                                           positional_dropout_rate),
-        )
+            pos_emb_class(attention_dim, positional_dropout_rate)
+            if input_layer != 'rope' else pos_emb_class(
+                attention_dim, attention_dim //
+                attention_heads, positional_dropout_rate))
 
         self.normalize_before = normalize_before
         self.after_norm = WENET_NORM_CLASSES[layer_norm_type](attention_dim,
@@ -105,11 +109,12 @@ class TransformerDecoder(torch.nn.Module):
         else:
             self.output_layer = torch.nn.Identity()
         self.num_blocks = num_blocks
+
         mlp_class = WENET_MLP_CLASSES[mlp_type]
         self.decoders = torch.nn.ModuleList([
             DecoderLayer(
                 attention_dim,
-                WENET_ATTENTION_CLASSES["selfattn"](
+                WENET_ATTENTION_CLASSES[selfattention_layer_type](
                     attention_heads,
                     attention_dim,
                     self_attention_dropout_rate,
@@ -119,7 +124,7 @@ class TransformerDecoder(torch.nn.Module):
                     n_kv_head=n_kv_head,
                     head_dim=head_dim,
                 ),
-                WENET_ATTENTION_CLASSES["selfattn"](
+                WENET_ATTENTION_CLASSES[selfattention_layer_type](
                     attention_heads,
                     attention_dim,
                     src_attention_dropout_rate,
@@ -336,6 +341,7 @@ class BiTransformerDecoder(torch.nn.Module):
         eps: float = 1e-5,
         n_kv_head: Optional[int] = None,
         head_dim: Optional[int] = None,
+        selfattention_layer_type: str = "selfattn",
     ):
 
         super().__init__()
@@ -363,6 +369,7 @@ class BiTransformerDecoder(torch.nn.Module):
             eps=eps,
             n_kv_head=n_kv_head,
             head_dim=head_dim,
+            selfattention_layer_type=selfattention_layer_type,
         )
 
         self.right_decoder = TransformerDecoder(
@@ -388,6 +395,7 @@ class BiTransformerDecoder(torch.nn.Module):
             eps=eps,
             n_kv_head=n_kv_head,
             head_dim=head_dim,
+            selfattention_layer_type=selfattention_layer_type,
         )
 
     def forward(
